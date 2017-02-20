@@ -1,2 +1,3 @@
-# studyGit
-学习使用Git管理源代码
+# hellow world
+- 这是我第一次使用Github
+- 感觉很新奇
