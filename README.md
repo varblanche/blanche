@@ -8,3 +8,4 @@
   var name = "zhangsan"
   console.log(name);
 ```
+- 谢谢观看。。。
