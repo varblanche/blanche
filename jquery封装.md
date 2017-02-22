@@ -1,162 +1,256 @@
-<p style="border-bottom:1px solid #ccc;font-size:*5em;font-weight:bold;">前端JS原生框架第1天</p>
-<hr>
+### Git工作流程
 
-# 课程内容
+* 创建本地仓库：git init 或者 git clone remoteUrl
+* 在工作目录上进行项目开发（新功能、协同、Bug）
+* 根据分支策略，不要在master分支开发，而是要根据开发的功能来使用分支进行开发。
+	eg：协同开发：此时要创建一个协同分支，在保存完本地版本后，要推送到远程仓库时，
+	首先 拉取最新版本代码，如果出现冲突就 手动合并后在重新生成本地版本，在推送。
+	不需要协同的，就直接保存成本地版本后直接推送即可。
+* 如果需要版本的回退，就使用git reset --hard sha值，恢复到该版本。
+* 如果要撤销文件的修改，就使用git checkout -- filename
+* 在提交之前想查看 工作目录 文件和 版本（暂存区）文件 的差异，
+	就使用 git difftool filename
+* 删除不需要的分支，git branch -d branchName
+	注意远程分支，不要随意删除。
+
+### select方法
+
+* select(selector[, context]);
+* 根据选择器selector，在context指定的范围下获取相应dom元素
+
+```javascript
+	function select(selector, context) {
+		// 存储所有获取到的dom元素
+		var ret = [];
+		// 判断是否指定了context
+		if(context){
+			// context 是 dom对象
+			// 使用context调用querySelectorAll 获取dom元素
+			// 将其转换成真数组返回
+			if(context.nodeType === 1){
+				return Array.prototype.slice.call(context.querySelectorAll(selector));
+			}
+			// context 是 dom数组或伪数组
+			// 遍历context，使用当前遍历到的元素调用querySelectorAll 获取dom元素
+			// 得到结果doms，要将其所有dom元素 追加到 ret数组内，
+			else if(context instanceof Array || 
+				(typeof context === 'object' && 'length' in context)){
+				for(var i = 0, l = context.length; i < l; i++){
+					var doms = context[i].querySelectorAll(selector);
+					for(var j = 0, k = doms.length; j < k; j++){
+						ret.push(doms[j]);
+					}
+				}
+			}	
+			// context 为 字符串即选择器
+			else {
+				return Array.prototype.slice.call(
+					document.querySelectorAll(context + ' ' + selector));
+			}	
+			return ret;
+		}
+		// 如果context没有传入实参
+		// 通过document调用querySelectorAll来直接获取dom元素
+		else {
+			return Array.prototype.slice.call(document.querySelectorAll(selector));
+		}
+	}
+```
+
+### each方法
+
+* each(arr, callback);
+* 遍历数组arr，执行callback回调函数 对遍历到每一个元素进行相关操作。
+* callback内部this 指向当前遍历到的元素
+* 实现结束循环操作
+
+```javascript
+function each(arr, callback) {
+	var i = 0,
+			l;
+
+	for(l = arr.length; i < l; i++){
+		// 如果函数callback执行后的返回值为false，结束循环
+		// 使用call来调用callback，是为了改变this ——> 当前遍历到的元素
+		//  arr[i], i 是给callback执行时所传入的实参。
+		if(callback.call(arr[i], arr[i], i) === false){
+			break;
+		}
+	} 
+}
+```
 
 ## 课程笔记
 
-### Git基本常用命令
+### map方法封装
 
-* mkdir XX 
-	(创建一个空目录 XX指目录名)
+1. 语法：map(arr, callback)
+	* arr:      遍历的数组对象
+	* callback：对数组元素进行的操作，要指定返回值，作为新数组元素。
 
-* pwd              
-	显示当前目录的路径。
+2. 功能：遍历数组arr，对每一个元素进行操作，并且根据回调函数的返回值，得到新数组对象。
 
-* git init           
-	把当前的目录变成可以管理的git仓库，生成隐藏.git文件。
+3. 实现思路
+	* 定义value变量，存储回调函数的返回值
+	* 遍历数组arr元素，执行callback函数，并且为其传入实参 arr[i], i
+	* 用value接收上述函数的返回值
+	* 如果value的值不为 null undefined值，就追加到 ret新数组中
+	* 返回新数组ret。
 
-* git add XX        
-	把xx文件添加到暂存区去。　
+```js
+	function map(arr, callback, args) {
+	// 临时存储 callback执行后的返回值
+	var value;
+	// 定义新数组
+	var ret = [];
+	var i = 0,
+			l = arr.length;
 
-* git commit –m “XX”  
-	提交文件 –m 后面的是注释。
+	for(; i < l; i++){
+		// 获取callback执行后的结果
+		value = callback(arr[i], i, args);
+		// 判断是否 为null 或者 undefined值
+		// 如果不为上述值，就将其追加到ret数组内。
+		if(value != null){
+			ret.push(value);
+		}
+	}
+	// 返回新数组对象
+	// 同时将多维数组转换成一维数组
+	return Array.prototype.concat.apply([], ret);
+	}
 
-* git status         
-	主要查看工作目录文件状态（查看仓库文件状态）　
+```
+### 判断数组与伪数组的方法
 
-* git diff  XX       
-	查看XX文件修改了那些内容
+0. 对象类型的确定
+	已该对象的构造函数的小写方式来描述其类型
 
-* git log           
-	查看历史记录　
+1. 判断数组类型 
 
-* git reset --hard HEAD^ 或者 git reset --hard HEAD~
-	回退到上一个版本(如果想回退到100个版本，使用git reset –hard HEAD~100 )　
+稀疏数组 --不一定包含所有的索引值，但是如果稀疏数组长度为n，
+那么该数组必须具有n-1的索引值。
 
-* cat XX         
-	查看XX文件内容　　
+var ar = [];
+ar[4] = 6;
 
-* git reflog       
-	查看历史记录的版本号id　　
+Object.prototype.toString.call(数组).slice(8, -1).toLowerCase();
 
-* git checkout -- XX  
-	把XX文件在工作区的修改全部撤销。
+instanceof
 
-* git rm XX          
-	删除XX文件　　
+2. 判断伪数组类型
+	* 排除window对象以及函数对象，他们也有length属性，但是含义和数组的length属性不同。
+	数组和伪数组对象的length含义为：元素的个数；
+	window对象的length含义为：页面中iframe标签的个数
+	函数对象的length含义为：定义形参的个数
+	* 满足以下至少一个条件就为 伪数组对象。
+		* 该对象length属性值为 0
+		* 如果length属性值 为 number类型 并且 值 > 0 并且 对象至少含有索引 length - 1。
+		eg: {length: "1"} -NO, {length: 4} -NO, {length: 5, 4: "name"} -Yes
+			{length: 6, 4: "name"} -NO
+			{length: 2, 1: "name", 0: 'age'} -Yes
+			{length: 2, 1: "name", 3: 'age'} -Yes
 
-* git remote add origin URL
-	关联一个远程库　
+### 获取内置对象的类型
 
-* git push –u(第一次要用-u 以后不需要) origin master 
-	把当前master分支推送到远程库　
+1. 语法：getType(obj)
 
-* git clone URL  
-	从远程库中克隆　
+2. 功能：获取传入参数的类型，返回值 为string 表示参数的类型
 
-* git checkout –b dev  
-	创建dev分支 并切换到dev分支上
+3. 实现思路
+	* 如果 obj 为 null，返回值为字符串 'null'
+	* 如果 obj 为 undefined，返回值 为 字符串 'undefined'
+  * 如果 obj 为 基本数据类型，返回值为 typeof obj
+  * 如果 obj 为 复合数据类型（内置对象），使用Object.prototype.toString来获取该对象的
+  构造函数名字，已其小写形式作为 该函数的返回值。
 
-* git branch  
-	查看当前所有的分支　
+### 判断是否为伪数组对象
 
-* git checkout master 
-	切换回master分支　
+1. 语法：isLikeArray(obj)
 
-* git merge dev    
-	在当前的分支上合并dev分支　
+2. 功能：判断obj是否为 伪数组。如果是，返回true，否则返回false。
 
-* git branch –d dev
-	删除dev分支　　
+3. 实现思路
+	* 排除window对象和函数对象以及真数组, 返回值为false
+	* 获取length属性值，
+	* 如果为 0 直接返回true
+	* 如果 > 0 并且具有 length - 1 索引，此时返回true；否则返回false
 
-* git branch name
-	创建分支　
-	　
-* git stash 
-	把当前的工作隐藏起来 等以后恢复现场后继续工作
+```js
+function getType(obj) {		
+			if(obj == null){
+				return obj + '';
+			}
+			return typeof obj !== 'object' ? 
+				typeof obj : 
+				Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
+		}
 
-* git stash list 
-	查看所有被隐藏的文件列表
+function isLikeArray(obj) {
+	var type, length;
+	// 过滤null 和 undefined值
+	if(obj == null){
+		return false;
+	}
+	type = getType(obj); // 获取obj类型
+	// 如果obj不是对象类型，返回值为false；
+	// 如果 obj 是对象，但是没有length属性，返回值为false
+	// 如果 obj 是对象并且 具有length属性，返回值 obj.length
+	length = typeof obj === 'object' && 'length' in obj && obj.length;
 
-* git stash apply 
-	恢复被隐藏的文件，但是内容不删除
+	// 排除window 函数 真数组
+	if(type === 'array' || type === 'function' || type === 'window'){
+		return false;
+	}
+	return length === 0 || // 如果length 值为 0 就返回true
+		// 或者 length 类型为 number 并且值 > 0 并且 具有 length - 1索引，返回true
+		typeof length === 'number' && length > 0 && (length - 1) in obj;
+}
 
-* git stash drop 
-	删除文件
+```
 
-* git stash pop 
-	恢复文件的同时 也删除文件　　
+### jq对象本质
 
-* git remote 
-	查看远程库的信息
+1. 通过$函数的返回值来获取jq对象
 
-* git remote –v 
-	查看远程库的详细信息　
+2. 指定$函数的参数，来获取dom元素，是以伪数组对象的方式来存储获取到dom元素。
+	最终将dom存储在jq对象。也就说，jq对象本质就是用来存储指定选择器获取到的dom元素的
+	伪数组对象。
 
-* git push origin master  
-	Git会把master分支推送到远程库对应的远程分支上
+3. 本质就是伪数组对象，功能就是存储获取到的dom元素；
+	 它的原型对象用来存储操作dom元素的方法
 
-### 合并分支
+### 工厂函数的意义
 
-1. git merge branchName
-	将 指定的分支 合并到 当前分支。如果想把 A分支 合并到 B分支，就要先切换到 B分支，
-	在使用该指令 来合并分支。
+1. 好处：在使用工厂模式来创建对象时，new 或 不 new 都能正确地得到相应的对象.
 
-2. 在合并分支时，会在当前分支上 重新生成一个新版本。相当于在当前分支提交了一次。
+```js
+// 在创建对象时，不直接使用构造函数或者直面量方式来创建
+// 而是通过一个函数，来创建，那么只需要传入该对象的相关属性即可。
+// 1: 基本工厂函数
+function createPerson(name, age) {
+	var obj = {};
+	obj.name = name;
+	obj.age = age;
+	return obj;
+}
+// 2: 扩展写法
+/*function Person(name, age) {
+	this.name = name;
+	this.age = age;
+}
 
-3. 在合并分支时，默认使用 fast-forward 模式（快进）,将分支提交的版本信息 直接拷贝到主分支，来实现分支的合并。而如果使用以下指令合并分支：
-git merge --no-ff branchName 不使用快进模式合并，会在主分支上 重新创建一个版本id，
-此时要指定该版本的备注信息。
+function createPerson(name, age) {
+	return new Person(name, age);
+}
+*/
+	
+function createPerson(name, age) {
+	return new createPerson.prototype.Person(name, age);
+}
 
-### 删除分支
-
-1. git branch -d branchName
-	删除指定的分支。
-
-### 从远程仓库克隆
-
-1. git clone URL
-	从远程服务器 下载 项目，会在在当前目录下创建新目录，名称为远程仓库的名字。在
-	该目录下 就已存在一个.git文件夹，说明不需要使用git init 来初始化一个空仓库了。
-
-2. git push URL branchName
-	将本地仓库指定的分支 推送到 远程服务器上。
-
-### 定义变量关联远程仓库地址
-
-1. git remote add <name> URL
-
-这样在往URL上的远程仓库推送文件 就可以使用 变量<name> 来代替 URL值。
-
-### 冲突解决
-
-在 协同分支上开发时，如果想将本地仓库 推送到 远程仓库，应该先pull拉取最新版本，在推送。
-而在 拉取最新版本时，会出现冲突，那么就手动解决。手动解决后，要重新生成本地仓库版本，
-然后在推送到 远程仓库内。
-
-### 从远程仓库拉取最新文件内容
-
-1. git pull 
-
-### 本地仓库分支与远程仓库分支建立关联
-
-1. git branch --set-upstream-to=origin/<branchName> dev
-
-可以跟踪远程仓库 dev分支的相关信息
-
-### .gitignore文件
-
-1. 忽略当前目录文件：filename
-
-2. 忽略文件夹：folderName
-
-3. 忽略某路径下文件：dir/filename
-
-4. 忽略同一类文件：*.<文件的类型名> eg: *.md
-
-### 比较差异
-
-1. git difftool filename
-如果 暂存区具有指定的文件，那么比较的就是 工作目录文件 和 暂存区文件 的差异；
-如果 暂存区没有，那么 就是比较 工作目录文件 和 版本库（最近提交的版本）文件 的差异。
+createPerson.prototype.Person = function (name, age) {
+	this.name = name;
+	this.age = age;
+};
+```
