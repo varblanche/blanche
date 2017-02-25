@@ -165,6 +165,8 @@ bower是什么？
 
 * `ng-click` 单击事件
 
+* `ng-molde` 
+
 ```html
 	<body>
     <!-- ng-include 的用法 -->
